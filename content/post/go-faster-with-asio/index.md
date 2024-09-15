@@ -16,7 +16,7 @@ weight: 1       # You can add weight to some posts to override the default sorti
 ---
 
 ## Skippable preamble
-MMO server emulation is a pretty niche topic and there likely isn't that much demand for a development blog on the topic. Yet, part of the fun of developing a sprawling backend system is that it's pretty easy to find an excuse to delve into almost any domain you get an itch to explore. At the very heart of any server emulator, though, is the networking library. In Ember, that heart is Boost.Asio.
+MMO server emulation is a pretty niche topic and there likely isn't that much demand for a development blog on the subject. Yet, part of the fun of developing a sprawling backend system is that it's pretty easy to find an excuse to delve into almost any domain you get an itch to explore. At the very heart of any server emulator, though, is the networking library. In Ember, that heart is Boost.Asio.
 
 As a disclaimer, my usage of Asio is limited to open source projects so I won't profess to be an expert in it. But, as most that users will know, its documentation can, at points, be *somewhat* cryptic and unopinionated on matters of performance.
 
