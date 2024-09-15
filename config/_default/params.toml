@@ -134,7 +134,7 @@ category = "Articles"
 categoryID = "DIC_kwDOMx2SWM4CifR_"
 mapping = "og:title"
 lightTheme = "light"
-darkTheme = "dark_protanopia"
+darkTheme = "transparent_dark"
 reactionsEnabled = 1
 emitMetadata = 0
 
