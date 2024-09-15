@@ -23,7 +23,7 @@ As a disclaimer, my usage of Asio is limited to open source projects so I won't 
 Asio is certainly utilised in domains that demand performance but those paid to squeeze the most out of it are often tight-lipped on their techniques. I'm here to blow the lid on those techniques to ensure you can get your high-frequency trades in before they do. Alright, perhaps we'll settle for something a little more modest... like a more responsive chat app or MMO server. Still, a good starting point to tide you over until you need to play in the big leagues of [DPDK](https://en.wikipedia.org/wiki/Data_Plane_Development_Kit) and [SeaStar](https://github.com/scylladb/seastar).
 
 ## Getting down to it
-The techniques discussed here are those that I've learned from my own experiences with Asio. There are rarely absolutes in development (apart from tabs being four spaces), so don't take them as gospel. Evaluate each technique and decide whether your own usecase could benefit. To put it bluntly, don't blame me if you submit a PR that makes your colleagues balk.
+The techniques discussed here are those that I've learned from my own experiences with Asio. There are rarely absolutes in development (apart from tabs being four spaces), so don't take them as gospel. Evaluate each technique and decide whether your own use case could benefit. To put it bluntly, don't blame me if you submit a PR that makes your colleagues balk.
 
 ### Mo' cores, mo' problems
 <img src="moarcores.jpg" width="250px" style="float:right; margin: 20px; border-radius: 5%;">I'm going to open with a real blinder. The machine you're running your Asio code on *probably* has a CPU with multiple cores and if you're looking to get the most from Asio, you want to be utilising all of them. That's it, now go forth and speed up your program.
@@ -32,15 +32,15 @@ Okay, it's a little more nuanced than that. The default approach to scaling Asio
 
 ```cpp
 auto concurrency = std::thread::hardware_concurrency();
-boost::asio::io_context service(concurrency);
+asio::io_context service(concurrency);
 
 std::vector<std::jthread> workers;
 
 // Behold! Instant scaling!
 for (auto i = 0u; i < concurrency; ++i) {
     workers.emplace_back(
-        static_cast<std::size_t(boost::asio::io_context::*)()>
-        (&boost::asio::io_context::run), &service
+        static_cast<std::size_t(asio::io_context::*)()>
+        (&asio::io_context::run), &service
     );
 }
 
@@ -125,7 +125,7 @@ void write(std::shared_ptr<buf_type> response) {
 _socket = asio::ip::tcp::socket(asio::make_strand(io_context));
 ```
 
-We've made sure that all handlers that use our socket are serialised. This is going to add a overhead but it's certainly preferable to introducing race conditions. 
+We've made sure that all handlers that use our socket are serialised. This is going to add overhead but it's certainly preferable to introducing race conditions. 
 
 So, we've now introduced lock contention for the work queues and overhead for handler serialisation in exchange for `io_context` concurrency, which is a decent trade-off... but it's also the *why not*. We haven't evaluated whether work balancing is a feature we *actually* need!
 
@@ -378,7 +378,7 @@ If you have any experience with Asio, you'll be familiar with how `std::shared_p
 
 Ember achieves this by storing a set of `unique_ptr<connection>`s. Initiating a connection shutdown will remove the connection from the set and pass the smart pointer to the connection object. The connection object will close all of its IO objects (sockets, timers), triggering an `operation_aborted` error on any pending completion handlers. Immediately after closing the IO resources, we `post` a final completion handler which will allow the smart pointer to drop off, freeing the connection object. The final `post` is why this strategy wouldn't work with a multithreaded `io_context`, since we wouldn't be able to guarantee that it'd only execute after Asio had cancelled all completion handlers associated with the object.
 
-This all sounds a little barmy, and that's because it is, but I'm yet to come across a *clean* way to manage Asio connections without `shared_ptr`s. Claims have been made that it can be done but I've never seen any examples and I have asked. Other examples of avoiding `shared_ptr`s in their Asio code have equally unwieldly tricks to make it work. Herb Sutter has discussed better lifetime models that don't require such tricks, so perhaps in the future, there will be a better way.
+This all sounds a little barmy, and that's because it is, but I'm yet to come across a *clean* way to manage Asio connections without `shared_ptr`s. Claims have been made that it can be done but I've never seen any examples and I have asked. Other examples of avoiding `shared_ptr`s in their Asio code have equally unwieldy tricks to make it work. Herb Sutter has discussed better lifetime models that don't require such tricks, so perhaps in the future, there will be a better way.
 
 If you're keen to see what the above looks like in practice, take a gander at Ember's version [here](https://github.com/EmberEmu/Ember/blob/8e20698c5cafdcfd5e873d8012191f23486043f2/src/gateway/SessionManager.cpp#L37).
 
@@ -389,7 +389,7 @@ One feature you'll often find yourself needing is the ability to time a network 
 ```cpp
 using namespace std::chrono_literals;
 
-boost::asio::steady_timer timer;
+asio::steady_timer timer;
 
 void start_session() {
     start_timer();
@@ -413,8 +413,8 @@ void write(auto buffer) {
 
 void start_timer() {
     timer_.expires_from_now(60s);
-    timer_.async_wait([&](const boost::system::error_code& ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+    timer_.async_wait([&](const std::system::error_code& ec) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
 
@@ -435,7 +435,7 @@ A much better approach is to instead set the timer up and then allow the timer t
 ```cpp
 using namespace std::chrono_literals;
 
-boost::asio::steady_timer timer;
+asio::steady_timer timer;
 bool is_active = false; // make atomic if multithreaded IO objects
 
 void start_session() {
@@ -591,7 +591,7 @@ The <cite>static buffer[^12]</cite> is a fixed-size buffer used *only* for inbou
 
 <img src="raid.jpg" width="250px" style="float:right; margin: 20px; border-radius: 5%;">The <cite>dynamic buffer[^13]</cite> allows for an unbounded amount of data to be written to it. It achieves this by internally allocating and deallocating fixed-size chunks of memory and storing them in an intrusively linked list. To reduce the number of allocations, it will attempt to reuse the initially allocated chunk as much as possible. This means that as long as the amount of data stored in the buffer at any given point stays under the size of a single chunk, it will never allocate additional chunks. To mitigate the cost of allocations in high-traffic scenarios, custom allocators can be used. In Ember's case, a much larger thread-local storage shared pool is used to allocate from, only resorting to the system allocator if that's also exhausted. The dynamic buffer can be used for inbound traffic but the internal machinery imposes overhead that isn't necessary if you don't need to exceed the size of a single memory chunk.
 
-The fixed-size nature of the dynamic buffer makes it great for throwing in arbirtrary data and pumping it out of Asio. A variation that you might see used is to allow the linked list of memory chunks to be of arbitrary size, meaning a chunk holds exactly one message. This might be preferable if you want to be able to add and remove chunks to/from the buffer to move them around your application or transfer them between buffers without copying the data.
+The fixed-size nature of the dynamic buffer makes it great for throwing in arbitrary data and pumping it out of Asio. A variation that you might see used is to allow the linked list of memory chunks to be of arbitrary size, meaning a chunk holds exactly one message. This might be preferable if you want to be able to add and remove chunks to/from the buffer to move them around your application or transfer them between buffers without copying the data.
 
 Ultimately, the buffer choices made for one application design might not work for another. You'll need to take stock of your application's design and the protocols you're working with and then choose the right buffering strategy from there. Just do what you can to avoid allocations, copying and locking.
 
@@ -655,7 +655,7 @@ As always, profile your application to decide whether this is the right choice f
 
 This one's going to take a different tack and give a brief nod to compile-time performance.
 
-Asio is a header-only library, chock full of templated types. This can be anathema to compile times, especially if you're including the entire library everywhere. Both new and experienced users will occassionally be tempted to use Asio via `#include <asio/asio.hpp>`. It's to quick to type and you don't need to worry about which Asio types you'll end up needing within your translation unit. It's also dragging the kitchen sink along with it.
+Asio is a header-only library, chock full of templated types. This can be anathema to compile times, especially if you're including the entire library everywhere. Both new and experienced users will occasionally be tempted to use Asio via `#include <asio/asio.hpp>`. It's to quick to type and you don't need to worry about which Asio types you'll end up needing within your translation unit. It's also dragging the kitchen sink along with it.
 
 Asio is well-structured, so get into the habit of only including what you actually use. Only need a TCP socket? `<asio/ip/tcp.hpp>`. Strands? `<asio/strand.hpp>`. Most parts of Asio will have their own header. You get the idea.
 
@@ -687,7 +687,7 @@ There are other techniques that might come in handy in very specific scenarios b
 
 #### Socket splicing
 
-<cite>splice()[^18]</cite> is a Linux system call that allows for moving data between file descriptors (that includes sockets) without having to copy the data between kernel and user space. This can be incredibly beneficial if, for example, you're working on an reverse proxy type application where you simply want to forward data from one socket to another (i.e. from client to backend service).
+<cite>splice()[^18]</cite> is a Linux system call that allows for moving data between file descriptors (that includes sockets) without having to copy the data between kernel and user space. This can be incredibly beneficial if, for example, you're working on a reverse proxy-type application where you simply want to forward data from one socket to another (i.e. from client to backend service).
 
 #### Page locking
 
