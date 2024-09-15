@@ -1,5 +1,5 @@
 # Change baseurl before deploy
-baseurl = "/"
+baseurl = "https://mmoemulator.com"
 languageCode = "en-gb"
 title = "Ember Development Blog"
 
