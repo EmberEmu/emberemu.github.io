@@ -224,7 +224,7 @@ When creating an `io_context`, Asio allows you set a concurrency hint to tell it
 > should allow to run simultaneously.<br/>
 > — <cite>Asio documentation[^1]</cite>
 
-<img src="neature.png" width="250px" style="float:right; margin: 20px; border-radius: 5%;">That's pretty neat. Unfortunately, if you've chosen the multithreaded `io_context` path, it might not be able to do much for you. On Windows, it passes the value to IOCP (IO completion ports), which may or may not have any effect, but it has no direct impact on Asio.
+<img src="neature.jpg" width="250px" style="float:right; margin: 20px; border-radius: 5%;">That's pretty neat. Unfortunately, if you've chosen the multithreaded `io_context` path, it might not be able to do much for you. On Windows, it passes the value to IOCP (IO completion ports), which may or may not have any effect, but it has no direct impact on Asio.
 
 If we've restrained ourselves to a single-threaded `io_context`, we can pass a concurrency hint of `1`, which the documentation tells us will eliminate a lock.
 
