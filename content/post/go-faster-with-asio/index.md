@@ -1,7 +1,7 @@
 ---
 title: "Going Super Sonic with Asio"
 description: Gotta go fast! Lessons learned for squeezing the most out of Asio for your application's networking.
-slug: boost-asio-performance
+slug: going-super-sonic-with-asio
 date: 2024-09-15 00:00:00+0000
 author: Chaosvex
 image: cover.jpg
@@ -93,6 +93,7 @@ accept connection
  This approach works well for many basic protocols, including HTTP/1.1 (which may or may not be half-duplex depending on who you ask), but soon falls apart when you need to communicate in both directions at the same time and where there isn't a 1:1 mapping between requests and responses... such as any MMO server.
 
 For a full-duplex protocol in Asio, we need to be able to initiate write operations independently of the read handler. For example:
+
 ```cpp
 // more pseudocode
 asio::strand _strand(io_context); // done somewhere else
