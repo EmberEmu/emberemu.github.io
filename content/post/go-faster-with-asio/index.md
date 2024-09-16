@@ -47,7 +47,7 @@ for (auto i = 0u; i < concurrency; ++i) {
 // ... other stuff...
 ```
 
-> Note: `std::thread::hardware_concurrency()` can return `0` if it's unable to determine the number of cores on the machine. I've never seen it happen but you might want to handle it.
+> Note: `std::thread::hardware_concurrency()` can return `0` if it's unable to determine the number of cores on the machine. Additionally, a process may be restricted to a subset of cores without affecting the value returned by this function. Read the documentation and consider providing an override.
 
 It looks appealing, right? You can continue to use your single `io_context` (or `io_service` if you're working in the dark ages) and make use of all your cores with just a few extra lines. While it is is a pretty good start, it has drawbacks that, in my humble opinion, mean it should not be the default approach you go for. To understand the *why not*, we need to first explore the *why*.
 
@@ -129,28 +129,31 @@ We've made sure that all handlers that use our socket are serialised. This is go
 
 So, we've now introduced lock contention for the work queues and overhead for handler serialisation in exchange for `io_context` concurrency, which is a decent trade-off... but it's also the *why not*. We haven't evaluated whether work balancing is a feature we *actually* need!
 
-If your application is likely to have a high volume of computationally expensive work on the `io_context` threads, you may well benefit from work balancing. However, if you're just using Asio to shuttle packets around at warp speed without doing anything overly taxing on the threads, you might benefit from the `io_context` per thread approach. This reduces lock contention within Asio and removes the need to use strands to ensure serialised IO object (i.e. sockets, timers, files) access.
+If your application is likely to have a high volume of computationally expensive work on the `io_context` threads, you may well benefit from work balancing. However, if you're just using Asio to shuttle packets around at warp speed without doing anything computationally taxing on the threads, you might benefit from the single thread per `io_context` approach. This reduces lock contention within Asio and removes the need to use strands to ensure serialised IO object (i.e. sockets, timers, files) access.
 
-Here's an example of setting up the `io_context` per core approach:
+Here's an example of setting up the thread per `io_context` approach, where the number of threads is determined by the number of cores in our system.
 
 ```cpp
 std::vector<std::jthread> threads;
 std::vector<std::unique_ptr<asio::io_context>> services;
+std::vector<std::shared_ptr<asio::io_context::work>> work_;
 
 const auto core_count = std::thread::hardware_concurrency();
 
 // create io_contexts
 for (auto i = 0u; i < core_count; ++i) {
-    services.emplace_back(
+    auto& ctx = services.emplace_back(
         std::make_unique<asio::io_context>(1)
     );
+
+    work.emplace_back(std::make_shared<asio::io_context::work>(*ctx));
 }
 
 // create worker threads
 for (auto i = 0u; i < core_count; ++i) {
     threads.emplace_back(static_cast<std::size_t(asio::io_context::*)()>
         (&asio::io_context::run), services[i].get());
-    thread::set_affinity(threads[i], i);
+    set_affinity(threads[i], i); // discussed below!
 }
 ```
 
@@ -368,7 +371,7 @@ _socket.async_send(buffers, [&](...) {
 
 In this basic example, the number of buffers is fixed at compile-time but if you need the number of buffers to be flexible, you can construct a *buffer sequence*, as <cite>per the documentation[^6]</cite>. Ember has a functional implementation <cite>here[^7]</cite>, since the documentation is a little sparse. The idea is to provide Asio with iterators over your sequence of buffers, with the lifetime of the underlying buffers left in your capable hands.
 
-Buffer sequences could likely fill an article of their own but at least you know they exist and when to reach for them. Just make sure your buffer sequences are <cite>cheap to copy[^8]</cite>.
+Buffer sequences could fill an article of their own but at least you know they exist and when to reach for them. Just make sure your buffer sequences are <cite>cheap to copy[^8]</cite>.
 
 ### A problem shared, is a performance halved
 
