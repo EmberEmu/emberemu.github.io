@@ -724,6 +724,8 @@ Hopefully some of these tips will be of value to other Asio users or even those 
 
 Thanks for reading, happy programming, and may your packets be delivered swiftly and in abundance!
 
+If you want to comment on this article, you can do so directly via the GitHub discussions thread, [here](https://github.com/EmberEmu/emberemu.github.io/discussions/3). All comments will appear below. 
+
 [^1]: Boost.Asio io_context [documentation](https://www.boost.org/doc/libs/1_86_0/doc/html/boost_asio/reference/io_context/io_context.html)
 [^2]: Boost.Asio release [notes](https://www.boost.org/doc/libs/1_62_0/doc/html/boost_asio/history.html#boost_asio.history.asio_1_6_1___boost_1_48)
 [^3]: Adds concurrency hints, [refuses to elaborate](https://github.com/chriskohlhoff/asio/issues/1466)
