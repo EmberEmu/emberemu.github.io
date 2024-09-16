@@ -660,7 +660,7 @@ As always, profile your application to decide whether this is the right choice f
 
 This one's going to take a different tack and give a brief nod to compile-time performance.
 
-Asio is a header-only library, chock full of templated types. This can be anathema to compile times, especially if you're including the entire library everywhere. Both new and experienced users will occasionally be tempted to use Asio via `#include <asio/asio.hpp>`. It's to quick to type and you don't need to worry about which Asio types you'll end up needing within your translation unit. It's also dragging the kitchen sink along with it.
+Asio is a header-only library, chock full of templated types. This can be anathema to compile times, especially if you're including the entire library everywhere. Both new and experienced users will occasionally be tempted to use Asio via `#include <asio/asio.hpp>`. It's quick to type and you don't need to worry about which Asio types you'll end up needing within your translation unit. It's also dragging the kitchen sink along with it.
 
 Asio is well-structured, so get into the habit of only including what you actually use. Only need a TCP socket? `<asio/ip/tcp.hpp>`. Strands? `<asio/strand.hpp>`. Most parts of Asio will have their own header. You get the idea.
 
