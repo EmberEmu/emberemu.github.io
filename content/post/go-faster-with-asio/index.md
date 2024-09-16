@@ -157,7 +157,7 @@ for (auto i = 0u; i < core_count; ++i) {
 }
 ```
 
-All we do here is determine the number of cores in the system and create an `io_context` with a single worker thread for each one. When a client connects, we'll have a strategy to determine which `io_context` its associated socket will live on, whether that's round robin or determining which context is serving the lowest number of clients. Whether a 1:1 core to thread ratio is the right choice for your application will come down to profiling but it's a sensible starting point.
+All we do here is determine the number of cores in the system and create an `io_context` with a single worker thread for each one. When a client connects, we'll have a strategy to determine which `io_context` its associated socket will live on, whether that's round robin or picking the context serving the lowest number of clients. Whether a 1:1 core to thread ratio is the right choice for your application will come down to profiling but it's a sensible starting point.
 
 Ember's own implementation of this pattern can be found [here](https://github.com/EmberEmu/Ember/blob/development/src/libs/shared/shared/threading/ServicePool.cpp).
 
