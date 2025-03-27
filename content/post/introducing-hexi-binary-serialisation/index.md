@@ -17,7 +17,7 @@ weight: 1
 
 Like any respectable MMORPG server emulator, Ember needs to be able to handle network data, in and out. Over the years, a small collection of utilities has been built up to ensure any network data handling can be done quickly, effectively and perhaps most importantly, safely.
 
-That collection of utilities has now been spun out into its own dependency-free (minus the stdlib) library, available for drop-in use by other projects that want to be able to handle with minimal fuss and effort. Here are the key points:
+That collection of utilities has now been spun out into its own dependency-free (minus the stdlib) library, available for drop-in use by other projects that want to handle binary data with minimal fuss and effort. Here are the key points:
 
 * Modern, C++23!
 * Cross-platform, tested with Clang, GCC and MSVC.
@@ -25,6 +25,7 @@ That collection of utilities has now been spun out into its own dependency-free 
 * Header-only. Available as a single header or a collection of headers for picking and choosing the bits you want to use.
 * CMake integration if you'd prefer not to drop the headers into your own project.
 * Provides multiple useful buffer structures to help shuffle those bytes around efficiently.
+* Classes and wrappers for getting the bytes from your data structures and into the buffers... and vice versa.
 * Provides allocators and Asio integration for when you feel the need for speed.
 * Endian utilities for ensuring your bytes are all in order.
 
